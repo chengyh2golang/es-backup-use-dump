@@ -1,0 +1,26 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: es-backup-cronjob
+  namespace: itfin-log
+spec:
+  schedule: "00 03 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: es-backup
+              image: 192.32.99.180/middleware/elasticsearch-dump:v1.0
+              args:
+                - "/bin/sh"
+                - "-c"
+                - "/tmp/es_backup2 --es=192.32.6.185 --port=9200 --dst=/tmp/es-backup --log=/tmp/es-backup"
+              volumeMounts:
+                - mountPath: /tmp/es-backup
+                  name: es-backup-volume
+          volumes:
+            - name: es-backup-volume
+              persistentVolumeClaim:
+                claimName: es-backup-pvc

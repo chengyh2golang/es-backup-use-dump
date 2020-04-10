@@ -102,20 +102,39 @@ func esIndexBackup(logDestDir,backupDestBaseDir,esAddr,esPort string,expired int
 					log.Printf("创建备份文件夹: %v 失败：%v\n",destPath,err)
 				}
 			}
+			destPath = utils.PathWrapper(destPath)
+			destFileName := destPath + indexName + ".json"
+
+			//检查要生成的索引的json文件是否存在，如果已经存在，将其改名为xx.bak
+			exists, _ = utils.CheckExists( destFileName )
+			if exists {
+				err := os.Rename(destFileName, destFileName+".bak")
+				if err != nil {
+					log.Printf("创建备份文件: %v 失败：%v\n",destFileName +".bak",err)
+				}
+			}
 
 			//执行备份
 			//构建docker的执行命令string
-			dockerCmd := "docker run --rm -v " + destPath + ":/tmp/es-backup-data " +
-				"docker.io/taskrabbit/elasticsearch-dump:latest" +
+			//dockerCmd := "docker run --rm -v " + destPath + ":/tmp/es-backup-data " +
+			//	"docker.io/taskrabbit/elasticsearch-dump:latest" +
+			//	" --input=http://" + esAddr + ":" + esPort + "/" + indexName +
+			//	" --output=" + "/tmp/es-backup-data/" + indexName + ".json" +
+			//	" --type=data"
+
+			//在docker容器内部执行，使用该命令
+			dockerCmd := "elasticdump " +
 				" --input=http://" + esAddr + ":" + esPort + "/" + indexName +
-				" --output=" + "/tmp/es-backup-data/" + indexName + ".json" +
+				" --output=" + destFileName +
 				" --type=data"
-			cmd := exec.Command("/bin/bash", "-c", dockerCmd)
+
+
+			cmd := exec.Command("/bin/sh", "-c", dockerCmd)
 			err = cmd.Run()
 			if err == nil {
 				backupIndicesArr = append(backupIndicesArr,indexName)
 			} else {
-				log.Printf("通过docker方式运行elasticsearch-dump报错：%v\n",err)
+				log.Printf("运行elasticdump报错：%v\n",err)
 			}
 
 		}
